@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 
+# Author: trevalkov
+# License: GPL3
+# Dependencies: Python3 Standard Library
+
 
 import datetime
 import time
