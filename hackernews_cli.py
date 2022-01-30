@@ -142,7 +142,7 @@ def fetch_api(top_news):
     reads = process_response(res)
     try:
         timestamp = int(round(time.time()))
-    Except ValueError:
+    except ValueError:
         sys.stderr.write("[!] Error with system clock\n")
         exit(1)
     try:
