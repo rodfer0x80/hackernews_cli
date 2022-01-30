@@ -160,7 +160,6 @@ def fetch_api(top_news):
             fp.write(data)
     except:
         sys.stderr.write("[!] Error writting to tempfile\n")
-        continue
     new_data = list()
     for line in data.split("\n"):
         if line != "":
@@ -182,7 +181,7 @@ def show_read(data, read, top_news):
         subprocess.call(cmd)
     except:
         sys.stderr.write("[!] Error calling subprocess\n")
-        continue
+        
 
 if __name__ == '__main__':
     top_news = "/tmp/hackernews_cli.txt"
