@@ -10,6 +10,7 @@ import time
 import requests
 import subprocess
 import os
+import sys
 
 
 def get_call(url):
@@ -50,6 +51,8 @@ def process_response(res):
 def show_menu():
     print('\033c')
     print("{x: int | x <= [1..30]  -  open read by ID")
+    print("up / w  -  scroll reader up")
+    print("down / s  -  scroll reader down")
     print("refresh / r  -  refresh news cache")
     print("help / h  -  display help menu")
     print("quit / q  -  quit program")
@@ -60,10 +63,11 @@ def show_menu():
         show_menu()
 
 
-def hackernews_cli(data, top_news):
+def hackernews_cli(data, top_news, handle=0):
     print('\033c')
     i = 0
-    for line in data:
+    len_data = len(data)
+    for line in data[handle*5*5:(handle+1)*5*5]:
         print(line)
         i += 1
         # post block has length 5 lines 
@@ -80,6 +84,12 @@ def hackernews_cli(data, top_news):
     if read == "quit" or read == "q":
         print("[*] Gracefully quitting ...")
         exit(0)
+    if read == "w" or read == "up" and handle > 0:
+        handle -= 1
+        hackernews_cli(data, top_news, handle)
+    if read == "s" or read == "down" and handle < 5:
+        handle += 1
+        hackernews_cli(data, top_news, handle)
     if read == "r" or read == "refresh" :
         os.remove(top_news)
         fetch_api(top_news)
@@ -90,7 +100,8 @@ def hackernews_cli(data, top_news):
     try:
         read = int(read)
     except ValueError:
-        print("[!] Command must be an int x => [1..30]")
+        print("[!] Command not recognised\n")
+        show_menu()
         time.sleep(1)
         hackernews_cli(data, top_news)
     return read
@@ -168,7 +179,7 @@ def fetch_api(top_news):
     return data
 
 
-def show_read(data, read, top_news):
+def show_read(data, read, top_news, browser):
     # read_input <= [1..30]
     # array_index_start = 0; read_input_start = 1; 
     # read_space_in_lines = 5 (each read occupies 5 lines in the logfile)
@@ -176,14 +187,15 @@ def show_read(data, read, top_news):
     read_link = (read -1) * 5 + 3
     link = data[read_link]
     link = link[7:]
-    cmd = ["open", f"{link}"]
+    cmd = [browser, f"{link}"]
     try:
         subprocess.call(cmd)
     except:
         sys.stderr.write("[!] Error calling subprocess\n")
-        
+
 
 if __name__ == '__main__':
+    browser = "firefox"
     top_news = "/tmp/hackernews_cli.txt"
     data = check_cache(top_news)
     while True:
