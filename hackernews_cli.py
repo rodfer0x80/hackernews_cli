@@ -84,9 +84,9 @@ def hackernews_cli(data, top_news, handle):
     if read == "quit" or read == "q":
         print("[*] Gracefully quitting ...")
         exit(0)
-    elif (read == "j" or read == "up") and handle > 0:
+    elif (read == "k" or read == "up") and handle > 0:
         handle -= 1
-    elif (read == "k" or read == "down") and handle < 5:
+    elif (read == "j" or read == "down") and handle < 5:
         handle += 1
     elif read == "r" or read == "refresh" :
         os.remove(top_news)
