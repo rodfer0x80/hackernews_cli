@@ -63,6 +63,7 @@ def show_menu():
     print("")
     print("")
 
+    
 def hackernews_cli(data, top_news, handle):
     print('\033c')
     i = 0
