@@ -50,18 +50,18 @@ def process_response(res):
 
 def show_menu():
     print('\033c')
+    print("******** HackerNews CLI Menu ********")
+    print("")
     print("{x: int | x <= [1..30]  -  open read by ID")
-    print("up / w  -  scroll reader up")
-    print("down / s  -  scroll reader down")
+    print("up / w  -  scroll reader up x [page limit 0]")
+    print("down / s  -  scroll reader down [page limit 4]")
     print("refresh / r  -  refresh news cache")
     print("help / h  -  display help menu")
     print("quit / q  -  quit program")
     print("")
-    print("ENTER 'q' or 'quit' to quit menu")
-    q = input(":")
-    while q != "quit" or q != "q":
-        show_menu()
-
+    print("********---------------------********")
+    print("")
+    print("")
 
 def hackernews_cli(data, top_news, handle=0):
     print('\033c')
@@ -84,10 +84,10 @@ def hackernews_cli(data, top_news, handle=0):
     if read == "quit" or read == "q":
         print("[*] Gracefully quitting ...")
         exit(0)
-    if read == "w" or read == "up" and handle > 0:
+    if (read == "w" or read == "up") and handle > 0:
         handle -= 1
         hackernews_cli(data, top_news, handle)
-    if read == "s" or read == "down" and handle < 5:
+    if (read == "s" or read == "down") and handle < 5:
         handle += 1
         hackernews_cli(data, top_news, handle)
     if read == "r" or read == "refresh" :
@@ -100,9 +100,9 @@ def hackernews_cli(data, top_news, handle=0):
     try:
         read = int(read)
     except ValueError:
-        print("[!] Command not recognised\n")
+        print("[!] Invalid command\n")
         show_menu()
-        time.sleep(1)
+        time.sleep(2)
         hackernews_cli(data, top_news, handle)
     return read
 
