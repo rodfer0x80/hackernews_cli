@@ -80,7 +80,7 @@ def hackernews_cli(data, top_news, handle=0):
         print("[!] Error reading command")
         print("Type 'help' or 'h' to see help menu")
         time.sleep(1)
-        hackernews_cli(data, top_news)
+        hackernews_cli(data, top_news, handle)
     if read == "quit" or read == "q":
         print("[*] Gracefully quitting ...")
         exit(0)
@@ -96,14 +96,14 @@ def hackernews_cli(data, top_news, handle=0):
         hackernews_cli(data, top_news)
     if read == "h" or read == "help":
         show_menu()
-        hackernews_cli(data, top_news)
+        hackernews_cli(data, top_news, handle)
     try:
         read = int(read)
     except ValueError:
         print("[!] Command not recognised\n")
         show_menu()
         time.sleep(1)
-        hackernews_cli(data, top_news)
+        hackernews_cli(data, top_news, handle)
     return read
 
 
