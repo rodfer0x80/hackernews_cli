@@ -1,16 +1,18 @@
 #!/usr/bin/python3
 
-# Author: trevalkov
-# License: GPL3
-# Dependencies: Python3 Standard Library
+
+import requests, pyfiglet
+import datetime, time, subprocess,os, sys
 
 
-import datetime
-import time
-import requests
-import subprocess
-import os
-import sys
+BROWSER = "firefox"
+TOP_NEWS = "/tmp/hackernews_cli.txt"
+
+
+def banner():
+    print('\033c')
+    ascii_banner = pyfiglet.figlet_format("Fetching HackerNews API ... \n")
+    print(ascii_banner)
 
 
 def get_call(url):
@@ -18,7 +20,7 @@ def get_call(url):
     try:
         res = requests.get(url)
     except:
-        sys.stderr.write("[!] Connection problem, can't reach API")
+        sys.stderr.write("[!] Connection problem, can't reach API\n")
         exit(1)
     if res.status_code != 200:
         err = True
@@ -45,6 +47,8 @@ def process_response(res):
                     'comments': f"https://news.ycombinator.com/item?id={read_id}",
             }
             reads.append(read)
+        else:
+            sys.stderr.write(err)
     return reads
 
 
@@ -63,8 +67,11 @@ def show_menu():
     print("")
     print("")
 
-    
-def hackernews_cli(data, top_news, handle):
+
+def hackernews_cli(data, handle):
+    global TOP_NEWS
+    if len(data) == 0:
+        data = fetch_api()
     print('\033c')
     i = 0
     len_data = len(data)
@@ -89,9 +96,13 @@ def hackernews_cli(data, top_news, handle):
     elif (read == "j" or read == "down") and handle < 5:
         handle += 1
     elif read == "r" or read == "refresh" :
-        os.remove(top_news)
-        fetch_api(top_news)
-        handle = 0
+        try:
+            os.remove(TOP_NEWS)
+        except:
+            pass
+        finally:
+            data = fetch_api()
+            return hackernews_cli(data, 0)
     elif read == "h" or read == "help":
         show_menu()
         time.sleep(2)
@@ -99,20 +110,22 @@ def hackernews_cli(data, top_news, handle):
         try:
             read = int(read)
         except ValueError:
-            print("[!] Invalid command\n")
             show_menu()
+            print("[!] Invalid command\n")
             time.sleep(2)
-            return handle, 0
-        return handle, read
-    return handle, 0
+            return data, 0, handle
+    
+    try:
+        read = int(read)
+    except ValueError:
+        return data, 0, handle
+    return data, read, handle
 
 
-def check_cache(top_news):
-    print('\033c')
-    print("[+] Checking cache ...")
-    data = ""
-    if os.path.exists(top_news):
-        with open(top_news, 'r') as fp:
+def check_cache():
+    global TOP_NEWS
+    if os.path.exists(TOP_NEWS):
+        with open(TOP_NEWS, 'r') as fp:
             data = fp.read().split("\n")
         new_data = list()
         for line in data:
@@ -120,66 +133,54 @@ def check_cache(top_news):
                 new_data.append(line)
         if len(new_data) == 0:
             sys.stderr.write("[!] Error parsing tempfile\n")
-            data = fetch_api(top_news)
-            return data[1:]
+            return data
         data = new_data
         try:
             timestamp = int(data[0])
         except ValueError:
             sys.stderr.write("[!] Error reading tempfile timestamp\n")
-            data = fetch_api(top_new)
-            return data[1:]
+            return data
         try:
             cw = int(round(time.time()))
         except:
             sys.stderr.write("[!] Error with system clock\n")
             exit(1)
         if cw - timestamp > 30 * 60:
-            os.remove(top_news)
-            data = fetch_api(top_news)
-    else:
-        data = fetch_api(top_news)     
-    return data[1:]
+            os.remove(TOP_NEWS)
+            return list()
+        return data[1:]
+    return list()
 
 
-def fetch_api(top_news):
-    print('\033c')
-    print("[+] Fetching HackerNews API ...")
+def fetch_api():
+    global TOP_NEWS
     url = "https://hacker-news.firebaseio.com/v0/topstories.json"
     res, err = get_call(url)
     if err:
         sys.stderr.write(res)
         exit(1)
     reads = process_response(res)
-    try:
-        timestamp = int(round(time.time()))
-    except ValueError:
-        sys.stderr.write("[!] Error with system clock\n")
-        exit(1)
-    try:
-        with open(top_news, "w") as fp:
-            data = f"{timestamp}\n"
-            i = 1
-            for read in reads:
-                data += f"Rank: {i}\n"
-                data += f"\tTitle: {read['title']}\n"
-                data += f"\tTime: {read['time']}\n"
-                data += f"\tLink: {read['link']}\n"
-                data += f"\tComments: {read['comments']}\n"
-                i += 1
-            data += "\n"
-            fp.write(data)
-    except:
-        sys.stderr.write("[!] Error writting to tempfile\n")
+    timestamp = int(round(time.time()))
+    data = f"{timestamp}\n"
+    i = 1
+    for read in reads:
+        data += f"Rank: {i}\n"
+        data += f"\tTitle: {read['title']}\n"
+        data += f"\tTime: {read['time']}\n"
+        data += f"\tLink: {read['link']}\n"
+        data += f"\tComments: {read['comments']}\n"
+        i += 1
     new_data = list()
-    for line in data.split("\n"):
+    with open(TOP_NEWS, "w") as fp:
+        fp.write(data)
+    for line in data.splitlines():
         if line != "":
             new_data.append(line)
-    data = new_data
-    return data
+    return new_data[1:]
 
 
-def show_read(data, read, top_news, browser):
+def show_read(data, read):
+    global BROWSER
     # read_input <= [1..30]
     # array_index_start = 0; read_input_start = 1; 
     # read_space_in_lines = 5 (each read occupies 5 lines in the logfile)
@@ -188,7 +189,7 @@ def show_read(data, read, top_news, browser):
         read_link = (read -1) * 5 + 3
         link = data[read_link]
         link = link[7:]
-        cmd = [browser, f"{link}"]
+        cmd = [BROWSER, f"{link}"]
         try:
             subprocess.call(cmd)
         except:
@@ -197,10 +198,10 @@ def show_read(data, read, top_news, browser):
 
 
 if __name__ == '__main__':
-    browser = "firefox"
-    top_news = "/tmp/hackernews_cli.txt"
-    data = check_cache(top_news)
     handle  = 0
+    data = check_cache()
+    banner()
+    time.sleep(1)
     while True:
-        handle, read = hackernews_cli(data, top_news, handle)
-        show_read(data, read, top_news, browser)
+        data, read, handle = hackernews_cli(data, handle)
+        show_read(data, read)
