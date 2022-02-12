@@ -7,7 +7,7 @@ import datetime, time, subprocess,os, sys
 
 BROWSER = "firefox"
 TOP_NEWS = "/tmp/hackernews_cli.txt"
-
+READS_SIZE = 50
 
 def banner():
     print('\033c')
@@ -29,9 +29,10 @@ def get_call(url):
 
 
 def process_response(res):
+    global READS_SIZE
     read_ids = res.json()
     reads = list()
-    for read_id in read_ids[:30]:
+    for read_id in read_ids[:READS_SIZE]:
         url = f"https://hacker-news.firebaseio.com/v0/item/{read_id}.json"
         res, err = get_call(url)
         if not err:
@@ -53,10 +54,11 @@ def process_response(res):
 
 
 def show_menu():
+    global READS_SIZE
     print('\033c')
     print("******** HackerNews CLI Menu ********")
     print("")
-    print("{x: int | x <= [1..30]  -  open read by ID")
+    print(f"(x: int | x <= [1..{READS_SIZE}])  -  open read by ID")
     print("up / w  -  scroll reader up x [page limit 0]")
     print("down / s  -  scroll reader down [page limit 4]")
     print("refresh / r  -  refresh news cache")
@@ -69,7 +71,7 @@ def show_menu():
 
 
 def hackernews_cli(data, handle):
-    global TOP_NEWS
+    global TOP_NEWS, READS_SIZE
     if len(data) == 0:
         data = fetch_api()
     print('\033c')
@@ -93,7 +95,7 @@ def hackernews_cli(data, handle):
         exit(0)
     elif (read == "k" or read == "up") and handle > 0:
         handle -= 1
-    elif (read == "j" or read == "down") and handle < 5:
+    elif (read == "j" or read == "down") and handle < (READS_SIZE/5)-1:
         handle += 1
     elif read == "r" or read == "refresh" :
         try:
@@ -159,6 +161,8 @@ def fetch_api():
     if err:
         sys.stderr.write(res)
         exit(1)
+    # multithread for each each and write to cache file using mutex
+    # then read file, remove timestamp and return to cli inteface
     reads = process_response(res)
     timestamp = int(round(time.time()))
     data = f"{timestamp}\n"
