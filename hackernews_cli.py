@@ -1,30 +1,138 @@
 #!/usr/bin/python3
 
 
-import requests, pyfiglet
+# pip install requests pyfiglet
+import requests
+
+try:
+    import pyfiglet
+    BANNER = True
+except:
+    BANNER = False
+
 import datetime, time, subprocess,os, sys
 
 
-BROWSER = "firefox"
+try:
+    BROWSER = os.environ['BROWSER']
+except KeyError:
+    sys.stderr.write("[!] Flag $BROWSER not set\n")
+    exit(1)
+
+try:
+    os.system("echo 'test' > /temp/hn_cli_test.txt && rm -f /tmp/hn_cli_test.txt")
+except:
+    sys.stderr.write("[!] Script needs read and write permission to /tmp\n")
+    exit(1)
+
 TOP_NEWS = "/tmp/hackernews_cli.txt"
+
 READS_SIZE = 50
 
+
+#######################################
+# User IO
+#######################################
+
 def banner():
+    global BANNER
     print('\033c')
-    ascii_banner = pyfiglet.figlet_format("Fetching HackerNews API ... \n")
+    if BANNER:
+        ascii_banner = pyfiglet.figlet_format("Fetching HackerNews API ... \n")
+    else:
+        ascii_banner = "Fetching HackNews API ...\n"
     print(ascii_banner)
 
+
+def show_menu():
+    global READS_SIZE
+    print('\033c')
+    print("******** HackerNews CLI Menu ********")
+    print("")
+    print(f"(x: int | x <= [1..{READS_SIZE}])  --  open read by ID")
+    print(f"(&x: int | x <= [1..{READS_SIZE}])  --  open comments by ID")
+    print("j[n]  --  scroll reader up .n [page limit 0] where n is number of pages to move")
+    print(f"k[n]  --  scroll reader down .n [page limit {READS_SIZE//5}] where n is the numbe rof pages to move")
+    print("r  --  refresh news cache")
+    print("help / h  --  display help menu")
+    print("quit / q  --  quit program")
+    print("")
+    print("********---------------------********")
+    print("")
+    print("")
+
+
+#######################################
+# Open links for reads and comments
+# Use brower set by flag $BROWER
+#######################################
+
+def show_comments(data, comment):
+    global BROWSER, READS_SIZE
+    if comment != 0:
+        comments = (comment -1) * 5 + 4
+        if comment  > READS_SIZE:
+            return 1
+        link = data[comments]
+        _, link = link.split(": ")
+        cmd = [BROWSER, f"{link}"]
+        try:
+            subprocess.call(cmd)
+        except:
+            sys.stderr.write("[!] Error calling subprocess\n")
+    return 0
+
+
+# read_input <= [1..30]
+# array_index_start = 0; read_input_start = 1; 
+# read_space_in_lines = 5 (each read occupies 5 lines in the logfile)
+# link_index = 3
+def show_read(data, read):
+    global BROWSER, READS_SIZE
+    if read != 0:
+        read_link = (read -1) * 5 + 3
+        if read > READS_SIZE:
+            return 1
+        link = data[read_link]
+        _, link = link.split(": ")
+        cmd = [BROWSER, f"{link}"]
+        try:
+            subprocess.call(cmd)
+        except:
+            sys.stderr.write("[!] Error calling subprocess\n")
+    return 0
+
+
+def show_feed(data, handle):
+    print('\033c')
+    i = 0
+    len_data = len(data)
+    for line in data[handle*5*5:(handle+1)*5*5]:
+        print(line)
+        i += 1
+        # post block has length 5 lines 
+        if i == 5:
+            print("")
+            i = 0
+    return 0
+
+
+#######################################
+# Make GET calls to fetch API
+# Parse data 
+# Cache and read from cache
+#######################################
 
 def get_call(url):
     err = False
     try:
         res = requests.get(url)
-    except:
-        sys.stderr.write("[!] Connection problem, can't reach API\n")
+    except Exception as e:
+        sys.stderr.write(f"[!] Connection problem, can't reach API -- {e}\n")
         exit(1)
     if res.status_code != 200:
         err = True
-        return f"[x] Response status code: res.status_code", err
+        return f"[x] Response status code: {res.status_code} -- ", err
     return res, err
 
 
@@ -53,75 +161,33 @@ def process_response(res):
     return reads
 
 
-def show_menu():
-    global READS_SIZE
-    print('\033c')
-    print("******** HackerNews CLI Menu ********")
-    print("")
-    print(f"(x: int | x <= [1..{READS_SIZE}])  -  open read by ID")
-    print("up / w  -  scroll reader up x [page limit 0]")
-    print("down / s  -  scroll reader down [page limit 4]")
-    print("refresh / r  -  refresh news cache")
-    print("help / h  -  display help menu")
-    print("quit / q  -  quit program")
-    print("")
-    print("********---------------------********")
-    print("")
-    print("")
-
-
-def hackernews_cli(data, handle):
-    global TOP_NEWS, READS_SIZE
-    if len(data) == 0:
-        data = fetch_api()
-    print('\033c')
-    i = 0
-    len_data = len(data)
-    for line in data[handle*5*5:(handle+1)*5*5]:
-        print(line)
+def fetch_api():
+    global TOP_NEWS
+    url = "https://hacker-news.firebaseio.com/v0/topstories.json"
+    res, err = get_call(url)
+    if err:
+        sys.stderr.write(res)
+        exit(1)
+    # multithread for each each and write to cache file using mutex
+    # then read file, remove timestamp and return to cli inteface
+    reads = process_response(res)
+    timestamp = int(round(time.time()))
+    data = f"{timestamp}\n"
+    i = 1
+    for read in reads:
+        data += f"Rank: {i}\n"
+        data += f"\tTitle: {read['title']}\n"
+        data += f"\tTime: {read['time']}\n"
+        data += f"\tLink: {read['link']}\n"
+        data += f"\tComments: {read['comments']}\n"
         i += 1
-        # post block has length 5 lines 
-        if i == 5:
-            print("")
-            i = 0
-    try:
-        read = input(">>> ")
-    except:
-        print("[!] Error reading command")
-        print("Type 'help' or 'h' to see help menu")
-        time.sleep(1)
-    if read == "quit" or read == "q":
-        print("[*] Gracefully quitting ...")
-        exit(0)
-    elif (read == "k" or read == "up") and handle > 0:
-        handle -= 1
-    elif (read == "j" or read == "down") and handle < (READS_SIZE/5)-1:
-        handle += 1
-    elif read == "r" or read == "refresh" :
-        try:
-            os.remove(TOP_NEWS)
-        except:
-            pass
-        finally:
-            data = fetch_api()
-            return hackernews_cli(data, 0)
-    elif read == "h" or read == "help":
-        show_menu()
-        time.sleep(2)
-    else:
-        try:
-            read = int(read)
-        except ValueError:
-            show_menu()
-            print("[!] Invalid command\n")
-            time.sleep(2)
-            return data, 0, handle
-    
-    try:
-        read = int(read)
-    except ValueError:
-        return data, 0, handle
-    return data, read, handle
+    new_data = list()
+    with open(TOP_NEWS, "w") as fp:
+        fp.write(data)
+    for line in data.splitlines():
+        if line != "":
+            new_data.append(line)
+    return new_data[1:]
 
 
 def check_cache():
@@ -154,58 +220,94 @@ def check_cache():
     return list()
 
 
-def fetch_api():
-    global TOP_NEWS
-    url = "https://hacker-news.firebaseio.com/v0/topstories.json"
-    res, err = get_call(url)
-    if err:
-        sys.stderr.write(res)
-        exit(1)
-    # multithread for each each and write to cache file using mutex
-    # then read file, remove timestamp and return to cli inteface
-    reads = process_response(res)
-    timestamp = int(round(time.time()))
-    data = f"{timestamp}\n"
-    i = 1
-    for read in reads:
-        data += f"Rank: {i}\n"
-        data += f"\tTitle: {read['title']}\n"
-        data += f"\tTime: {read['time']}\n"
-        data += f"\tLink: {read['link']}\n"
-        data += f"\tComments: {read['comments']}\n"
-        i += 1
-    new_data = list()
-    with open(TOP_NEWS, "w") as fp:
-        fp.write(data)
-    for line in data.splitlines():
-        if line != "":
-            new_data.append(line)
-    return new_data[1:]
+################################
+# Event Handler
+################################
 
-
-def show_read(data, read):
-    global BROWSER
-    # read_input <= [1..30]
-    # array_index_start = 0; read_input_start = 1; 
-    # read_space_in_lines = 5 (each read occupies 5 lines in the logfile)
-    # link_index = 3
-    if read != 0:
-        read_link = (read -1) * 5 + 3
-        link = data[read_link]
-        link = link[7:]
-        cmd = [BROWSER, f"{link}"]
+def hackernews_cli(data, handle):
+    global TOP_NEWS, READS_SIZE
+    if len(data) == 0:
+        data = fetch_api()
+    show_feed(data, handle)
+    try:
+        read = input(">>> ")
+    except:
+        print("[!] Error reading command")
+        print("Type 'help' or 'h' to see help menu")
+        time.sleep(1)
+    if read == "quit" or read == "q":
+        print("[*] Gracefully quitting ...")
+        exit(0)
+    elif len(read) == 0:
+        show_menu()
+        print("[!] Invalid command\n")
+        time.sleep(2)
+        return data, handle
+    elif read[0] == "&":
         try:
-            subprocess.call(cmd)
+            comment = int(read[1:])
+            if show_comments(data, comment) != 0:
+                sys.stderr.write("[!] Read input out of bounds for data size\n")
+                _ = int("IndexOutOfRange")
+        except ValueError:
+            show_menu()
+            print("[!] Invalid command\n")
+            time.sleep(2)
+            return data, handle
+    elif read[0] == "k" and handle > 0:
+        try:
+            c = int(read[1:])
         except:
-            sys.stderr.write("[!] Error calling subprocess\n")
-    return 0
+            c = 1
+        handle -=  c
+        if handle < 0:
+            handle = 0
+    elif read[0] == "j" and handle < (READS_SIZE//5):
+        try:
+            c = int(read[1:])
+        except:
+            c = 1
+        handle += c
+        if handle > (READS_SIZE//5)-1:
+            handle = (READS_SIZE//5)-1
+    elif read == "r" or read == "refresh" :
+        try:
+            os.remove(TOP_NEWS)
+        except:
+            pass
+        finally:
+            data = fetch_api()
+            return hackernews_cli(data, 0)
+    elif read == "h" or read == "help":
+        show_menu()
+        time.sleep(2)
+    else:
+        try:
+            read = int(read)
+            if show_read(data, read) != 0:
+                sys.stderr.write("[!] Read input out of bounds for data size\n")
+                _ = int("IndexOutOfRange")
+        except ValueError:
+            show_menu()
+            print("[!] Invalid command\n")
+            time.sleep(2)
+            return data, handle
+
+    return data, handle
 
 
-if __name__ == '__main__':
+#######################################
+# main
+#######################################
+
+def bootstrap():
     handle  = 0
     data = check_cache()
     banner()
     time.sleep(1)
     while True:
-        data, read, handle = hackernews_cli(data, handle)
-        show_read(data, read)
+        data, handle = hackernews_cli(data, handle)
+
+
+if __name__ == '__main__':
+    bootstrap()
