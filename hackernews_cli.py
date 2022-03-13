@@ -29,6 +29,12 @@ TOP_NEWS = "/tmp/hackernews_cli.txt"
 
 READS_SIZE = 50
 
+CACHE_TIMEOUT = 30 * 60 # seconds
+try:
+    _ = int(CACHE_TIMEOUT)
+except:
+    sys.stderr.write("[!] CACHE_TIMEOUT must be and integer of seconds\n")
+    exit(1)
 
 #######################################
 # User IO
@@ -213,7 +219,7 @@ def check_cache():
         except:
             sys.stderr.write("[!] Error with system clock\n")
             exit(1)
-        if cw - timestamp > 30 * 60:
+        if cw - timestamp > CACHE_TIMEOUT:
             os.remove(TOP_NEWS)
             return list()
         return data[1:]
