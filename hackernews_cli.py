@@ -96,9 +96,9 @@ def show_comments(data, comment):
 # read_space_in_lines = 5 (each read occupies 5 lines in the logfile)
 # link_index = 3
 def show_read(data, read):
-    global BROWSER, READS_SIZE, PAGE_SIZE
+    global BROWSER, READS_SIZE
     if read != 0:
-        read_link = (read -1) * PAGE_SIZE + 3
+        read_link = (read -1) * 5 + 3
         if read > READS_SIZE:
             return 1
         link = data[read_link]
