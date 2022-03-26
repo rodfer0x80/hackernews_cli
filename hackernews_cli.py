@@ -27,7 +27,9 @@ except:
 
 TOP_NEWS = "/tmp/hackernews_cli.txt"
 
-READS_SIZE = 50
+READS_SIZE = 70
+
+PAGE_SIZE = 7
 
 CACHE_TIMEOUT = 30 * 60 # seconds
 try:
@@ -74,9 +76,9 @@ def show_menu():
 #######################################
 
 def show_comments(data, comment):
-    global BROWSER, READS_SIZE
+    global BROWSER, READS_SIZE, PAGE_SIZE
     if comment != 0:
-        comments = (comment -1) * 5 + 4
+        comments = (comment -1) * PAGE_SIZE + 4
         if comment  > READS_SIZE:
             return 1
         link = data[comments]
@@ -94,9 +96,9 @@ def show_comments(data, comment):
 # read_space_in_lines = 5 (each read occupies 5 lines in the logfile)
 # link_index = 3
 def show_read(data, read):
-    global BROWSER, READS_SIZE
+    global BROWSER, READS_SIZE, PAGE_SIZE
     if read != 0:
-        read_link = (read -1) * 5 + 3
+        read_link = (read -1) * PAGE_SIZE + 3
         if read > READS_SIZE:
             return 1
         link = data[read_link]
@@ -110,15 +112,16 @@ def show_read(data, read):
 
 
 def show_feed(data, handle):
+    global PAGE_SIZE
     print('\033c')
     i = 0
     len_data = len(data)
-    for line in data[handle*5*5:(handle+1)*5*5]:
+    for line in data[handle*PAGE_SIZE*5:(handle+1)*PAGE_SIZE*5]:
         print(line)
         i += 1
         # post block has length 5 lines 
         if i == 5:
-            print("")
+            print("\n")
             i = 0
     return 0
 
