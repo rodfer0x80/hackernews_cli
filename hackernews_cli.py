@@ -24,16 +24,13 @@ try:
 except:
     sys.stderr.write("[!] Script needs read and write permission to /tmp\n")
     exit(1)
-
-TOP_NEWS = "/tmp/hackernews_cli.txt"
-
 READS_SIZE = 70
-
 PAGE_SIZE = 7
 
-CACHE_TIMEOUT_SECONDS = 30 * 60 # seconds
+TOP_NEWS = "/tmp/hackernews_cli.txt"
+CACHE_TIMEOUT_SECONDS = 30 * 60
 try:
-    _ = int(CACHE_TIMEOUT_SECONDS)
+    CACHE_TIMEOUT_SECONDS = int(CACHE_TIMEOUT_SECONDS)
 except:
     sys.stderr.write("[!] CACHE_TIMEOUT_SECONDS must be and integer of seconds\n")
     exit(1)
