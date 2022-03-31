@@ -87,7 +87,7 @@ def show_menu():
 def show_comments(data, comment):
     global BROWSER, READS_SIZE, PAGE_SIZE, DATA_UNIT_SIZE
     if comment != 0:
-        comments = (comment - DATA_UNIT_SIZE-4) * PAGE_SIZE + DATA_UNIT_SIZE-1
+        comments = comment*DATA_UNIT_SIZE-1
         if comment  > READS_SIZE:
             return 1
         link = data[comments]
