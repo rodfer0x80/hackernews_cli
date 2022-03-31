@@ -31,11 +31,11 @@ READS_SIZE = 70
 
 PAGE_SIZE = 7
 
-CACHE_TIMEOUT = 30 * 60 # seconds
+CACHE_TIMEOUT_SECONDS = 30 * 60 # seconds
 try:
-    _ = int(CACHE_TIMEOUT)
+    _ = int(CACHE_TIMEOUT_SECONDS)
 except:
-    sys.stderr.write("[!] CACHE_TIMEOUT must be and integer of seconds\n")
+    sys.stderr.write("[!] CACHE_TIMEOUT_SECONDS must be and integer of seconds\n")
     exit(1)
 
 #######################################
@@ -222,7 +222,7 @@ def check_cache():
         except:
             sys.stderr.write("[!] Error with system clock\n")
             exit(1)
-        if cw - timestamp > CACHE_TIMEOUT:
+        if cw - timestamp > CACHE_TIMEOUT_SECONDS:
             os.remove(TOP_NEWS)
             return list()
         return data[1:]
