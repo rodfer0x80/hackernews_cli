@@ -234,7 +234,7 @@ def check_cache():
 ################################
 
 def hackernews_cli(data, handle):
-    global TOP_NEWS, READS_SIZE
+    global TOP_NEWS, READS_SIZE, PAGE_SIZE
     if len(data) == 0:
         data = fetch_api()
     show_feed(data, handle)
@@ -263,7 +263,7 @@ def hackernews_cli(data, handle):
             print("[!] Invalid command\n")
             time.sleep(2)
             return data, handle
-    elif read[0] == "k" and handle > 0:
+    elif read[0] == "k":
         try:
             c = int(read[1:])
         except:
@@ -271,14 +271,15 @@ def hackernews_cli(data, handle):
         handle -=  c
         if handle < 0:
             handle = 0
-    elif read[0] == "j" and handle < (READS_SIZE//5):
+        return data, handle
+    elif read[0] == "j" and handle < (READS_SIZE//PAGE_SIZE):
         try:
             c = int(read[1:])
         except:
             c = 1
         handle += c
-        if handle > (READS_SIZE//5)-1:
-            handle = (READS_SIZE//5)-1
+        if handle > (READS_SIZE//PAGE_SIZE)-1:
+            handle = (READS_SIZE//PAGE_SIZE)-1
     elif read == "r" or read == "refresh" :
         try:
             os.remove(TOP_NEWS)
