@@ -4,6 +4,8 @@
 # pip install requests pyfiglet
 import requests
 
+HTTP_SUCCESS = 200
+
 try:
     import pyfiglet
     BANNER = True
@@ -26,6 +28,16 @@ except:
     exit(1)
 READS_SIZE = 70
 PAGE_SIZE = 7
+
+# DATA_UNIT_SIZE represents the size of a block of data from the API
+# each read maps to 5 key:value of information about the read
+# -5:rank,
+# -4:title,
+# -3:time, 
+# -2:link, 
+# -1:comments
+# so to access values decrement variable
+DATA_UNIT_SIZE = 5
 
 TOP_NEWS = "/tmp/hackernews_cli.txt"
 CACHE_TIMEOUT_SECONDS = 30 * 60
@@ -50,14 +62,14 @@ def banner():
 
 
 def show_menu():
-    global READS_SIZE
+    global READS_SIZE, PAGE_SIZE
     print('\033c')
     print("******** HackerNews CLI Menu ********")
     print("")
     print(f"(x: int | x <= [1..{READS_SIZE}])  --  open read by ID")
     print(f"(&x: int | x <= [1..{READS_SIZE}])  --  open comments by ID")
     print("j[n]  --  scroll reader up .n [page limit 0] where n is number of pages to move")
-    print(f"k[n]  --  scroll reader down .n [page limit {READS_SIZE//5}] where n is the numbe rof pages to move")
+    print(f"k[n]  --  scroll reader down .n [page limit {READS_SIZE//PAGE_SIZE}] where n is the numbe rof pages to move")
     print("r  --  refresh news cache")
     print("help / h  --  display help menu")
     print("quit / q  --  quit program")
@@ -73,9 +85,9 @@ def show_menu():
 #######################################
 
 def show_comments(data, comment):
-    global BROWSER, READS_SIZE, PAGE_SIZE
+    global BROWSER, READS_SIZE, PAGE_SIZE, DATA_UNIT_SIZE
     if comment != 0:
-        comments = (comment -1) * PAGE_SIZE + 4
+        comments = (comment - DATA_UNIT_SIZE-4) * PAGE_SIZE + DATA_UNIT_SIZE-1
         if comment  > READS_SIZE:
             return 1
         link = data[comments]
@@ -93,9 +105,9 @@ def show_comments(data, comment):
 # read_space_in_lines = 5 (each read occupies 5 lines in the logfile)
 # link_index = 3
 def show_read(data, read):
-    global BROWSER, READS_SIZE
+    global BROWSER, READS_SIZE, DATA_UNIT_SIZE
     if read != 0:
-        read_link = (read -1) * 5 + 3
+        read_link = (read -1) * DATA_UNIT_SIZE + DATA_UNIT_SIZE-2
         if read > READS_SIZE:
             return 1
         link = data[read_link]
@@ -109,15 +121,15 @@ def show_read(data, read):
 
 
 def show_feed(data, handle):
-    global PAGE_SIZE
+    global PAGE_SIZE, DATA_UNIT_SIZE
     print('\033c')
     i = 0
     len_data = len(data)
-    for line in data[handle*PAGE_SIZE*5:(handle+1)*PAGE_SIZE*5]:
+    for line in data[handle*PAGE_SIZE*DATA_UNIT_SIZE:(handle+1)*PAGE_SIZE*DATA_UNIT_SIZE]:
         print(line)
         i += 1
         # post block has length 5 lines 
-        if i == 5:
+        if i == DATA_UNIT_SIZE:
             print("\n")
             i = 0
     return 0
@@ -130,13 +142,14 @@ def show_feed(data, handle):
 #######################################
 
 def get_call(url):
+    global HTTP_SUCCESS
     err = False
     try:
         res = requests.get(url)
     except Exception as e:
         sys.stderr.write(f"[!] Connection problem, can't reach API -- {e}\n")
         exit(1)
-    if res.status_code != 200:
+    if res.status_code != HTTP_SUCCESS:
         err = True
         return f"[x] Response status code: {res.status_code} -- ", err
     return res, err
