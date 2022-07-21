@@ -1,34 +1,43 @@
 #!/usr/bin/python3
 
 
-# pip install requests pyfiglet
+import datetime
+import time
+import subprocess
+import os
+import sys
+# pip install requests
 import requests
-
-HTTP_SUCCESS = 200
-
+# pip install pyfiglet (optional)
 try:
     import pyfiglet
     BANNER = True
 except:
     BANNER = False
 
-import datetime, time, subprocess,os, sys
 
+#######################################
+# Configs
+#######################################
+# CLI renderer
+try:
+    os.system("echo 'test' > /temp/hn_cli_test.txt && rm -f /tmp/hn_cli_test.txt")
+except:
+    sys.stderr.write("[!] Script needs read and write permission to /tmp\n")
+    exit(1)
+TOP_NEWS = "/tmp/hackernews_cli.txt"
+READS_SIZE = 80
+PAGE_SIZE = 4
 
+# Web
+HTTP_SUCCESS = 200
 try:
     BROWSER = os.environ['BROWSER']
 except KeyError:
     sys.stderr.write("[!] Flag $BROWSER not set\n")
     exit(1)
 
-try:
-    os.system("echo 'test' > /temp/hn_cli_test.txt && rm -f /tmp/hn_cli_test.txt")
-except:
-    sys.stderr.write("[!] Script needs read and write permission to /tmp\n")
-    exit(1)
-READS_SIZE = 70
-PAGE_SIZE = 7
-
+# Cache
 # DATA_UNIT_SIZE represents the size of a block of data from the API
 # each read maps to 5 key:value of information about the read
 # -5:rank,
@@ -38,14 +47,13 @@ PAGE_SIZE = 7
 # -1:comments
 # so to access values decrement variable
 DATA_UNIT_SIZE = 5
-
-TOP_NEWS = "/tmp/hackernews_cli.txt"
 CACHE_TIMEOUT_SECONDS = 30 * 60
 try:
     CACHE_TIMEOUT_SECONDS = int(CACHE_TIMEOUT_SECONDS)
 except:
     sys.stderr.write("[!] CACHE_TIMEOUT_SECONDS must be and integer of seconds\n")
     exit(1)
+
 
 #######################################
 # User IO
@@ -92,7 +100,10 @@ def show_comments(data, comment):
             return 1
         link = data[comments]
         _, link = link.split(": ")
-        cmd = [BROWSER, f"{link}"]
+        if sys.platform == "darwin":
+            cmd = ["open", "-a", BROWSER.capitalize(), f"{link}"]
+        else: # linux
+            cmd = [BROWSER, f"{link}"]
         try:
             subprocess.call(cmd)
         except:
